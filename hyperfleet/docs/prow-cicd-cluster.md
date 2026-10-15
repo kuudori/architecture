@@ -218,7 +218,7 @@ After provisioning the cluster via Terraform, install the namespace cleaner manu
 
 ### Install the Namespace Cleaner
 
-The namespace cleaner is a CronJob that removes stale E2E test namespaces every hour. It deletes each namespace that carries any label key in `CLEANER_LABEL_SELECTOR` and is older than **2 hours**. E2E adapters set `hyperfleet.io/cluster-id` on the resources they create, and the E2E suite sets `e2e.hyperfleet.io/run-id` on its test namespaces.
+The namespace cleaner is a CronJob that removes stale namespaces every hour. It deletes each namespace that carries any label key in `CLEANER_LABEL_SELECTOR` and is older than **2 hours**. E2E adapters set `hyperfleet.io/cluster-id` on the resources they create, and the E2E suite sets `e2e.hyperfleet.io/run-id` on its test namespaces. The remaining key, `hyperfleet.io/test-run`, is not E2E-specific: the `check-hyperfleet-namespace` target in the `hyperfleet-infra` Makefile labels the install namespace with it during stack installs (`make install-hyperfleet`, `install-api`, `install-desire-delivery`), so the cleaner also deletes installed HyperFleet stacks once they pass the 2-hour age threshold — not just E2E leftovers.
 
 The cleaner is defined in the `helm/namespace-cleaner/` Helm chart in `hyperfleet-infra` ([PR #55](https://github.com/openshift-hyperfleet/hyperfleet-infra/pull/55)). `make install-cleaner` also applies the `hyperfleet-critical` PriorityClass, which the cleaner pod uses.
 
