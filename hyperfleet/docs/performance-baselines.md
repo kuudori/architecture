@@ -1,7 +1,7 @@
 ---
 Status: Active
 Owner: HyperFleet Team
-Last Updated: 2026-08-03
+Last Updated: 2026-10-16
 ---
 
 # Performance Baselines
@@ -35,6 +35,8 @@ Both environments run the same stack: API, Sentinel (clusters + nodepools), 3 ad
 | Execution | `kubectl run` (ClusterIP) | Prow `tier1-nightly` job |
 | Database | ~1k seeded clusters | Fresh deploy per run |
 | Date captured | 2026-06-18 | 2026-06-23 |
+
+Prow perf numbers measured after HYPERFLEET-1495 come from the `perf-nightly` job, which runs only the perf specs.
 
 ## Baselines
 
@@ -99,7 +101,7 @@ All operations comfortably clear the shared `ThresholdAPIRead`/`ThresholdAPIList
 
 ### Prow CI
 
-Prow baselines are captured automatically by the `tier1-nightly` job. To trigger a run on demand, use the [Gangway API](https://github.com/openshift-hyperfleet/architecture/blob/main/hyperfleet/docs/release/test-release/trigger-e2e-jobs-via-gangway.md). Results are available in the [Prow dashboard](https://prow.ci.openshift.org/?job=periodic-ci-openshift-hyperfleet-hyperfleet-e2e-main-e2e-tier1-nightly) build logs (search for `[PERF]` lines).
+Prow baselines are captured automatically by the `periodic-ci-openshift-hyperfleet-hyperfleet-e2e-main-e2e-perf-nightly` job. To trigger a run on demand, use the [Gangway API](https://github.com/openshift-hyperfleet/architecture/blob/main/hyperfleet/docs/release/test-release/trigger-e2e-jobs-via-gangway.md). Results are available in the [Prow dashboard](https://prow.ci.openshift.org/?job=periodic-ci-openshift-hyperfleet-hyperfleet-e2e-main-e2e-perf-nightly) build logs (search for `[PERF]` lines).
 
 ### GKE dev
 
