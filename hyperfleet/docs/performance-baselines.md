@@ -75,7 +75,7 @@ Channel, Version, and WifConfig carry no `RequiredAdapters` — unlike Cluster/N
 
 Version rows below cover only the nested `/channels/{parent_id}/versions` routes. `hyperfleet-api` also exposes flat `/versions` read/update/delete routes (`POST /versions` is rejected — creation needs parent context) for cross-channel access, but no perf coverage exists for that flat path yet; treat it as a gap for a follow-up story, not a value reflected in this table.
 
-Captured 2026-07-27 on a dedicated GKE dev cluster (`dev-tithakka`, e2-standard-4 nodes, no adapters/Sentinel dependency for these kinds) with ~1k seeded rows per kind (1000 Channels, 1000 WifConfigs, 1000 Versions under one parent Channel — the worst-case shape for a single list query). **No Prow CI numbers exist yet** for these operations: the perf specs are new (added by HYPERFLEET-1305) and haven't run in `tier1-nightly` yet — they'll be picked up automatically (no CI config changes needed, same Ginkgo `perf` label) on the first nightly run after this branch merges to `main`. Revisit this table once that run lands.
+Captured 2026-07-27 on a dedicated GKE dev cluster (`dev-tithakka`, e2-standard-4 nodes, no adapters/Sentinel dependency for these kinds) with ~1k seeded rows per kind (1000 Channels, 1000 WifConfigs, 1000 Versions under one parent Channel — the worst-case shape for a single list query). **No Prow CI numbers are recorded here yet** for these operations. The perf specs came with HYPERFLEET-1305 and have run in `tier1-nightly` since it merged on 2026-08-03. After HYPERFLEET-1495 they run in `perf-nightly`.
 
 | Operation                                   | GKE dev |
 | -------------------------------------------- | ------- |
