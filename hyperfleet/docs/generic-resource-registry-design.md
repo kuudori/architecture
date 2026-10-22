@@ -1,7 +1,7 @@
 ---
 Status: Draft
 Owner: HyperFleet Architecture Team
-Last Updated: 2026-09-28
+Last Updated: 2026-10-14
 ---
 
 # Generic Resource Registry — Design Document
@@ -384,9 +384,11 @@ CREATE INDEX idx_resources_deleted_at ON resources (deleted_at);
 -- resource_labels: no extra index needed — the composite PK (resource_id, key) is the leading index
 -- and covers all "WHERE resource_id = ?" queries efficiently.
 
--- resource_conditions: no extra index needed — the composite PK (resource_id, type) is the leading
--- index and covers all "WHERE resource_id = ?" queries efficiently. Uniqueness per (resource_id, type)
--- is enforced by the PK itself.
+-- resource_conditions: PK (resource_id, type) covers "WHERE resource_id = ?" (Get, Preload). This
+-- partial index covers type/status scans; the only such query is the reconciliation metrics join.
+-- The TSL condition filter (which the Sentinel polls via) does not use it:
+CREATE INDEX idx_resource_conditions_type_status
+    ON resource_conditions (type, status) WHERE status = 'False';
 
 -- resource_references: target lookup for deletion restriction and reverse lookup queries
 CREATE INDEX idx_resource_references_source ON resource_references (source_id);
@@ -1147,10 +1149,10 @@ The database is initialized from scratch. There is no existing data to migrate a
 **Database migrations:**
 
 ```text
-202604080001_add_resources.go           — CREATE TABLE resources + indexes
-202604080002_add_resource_labels.go     — CREATE TABLE resource_labels
-202604080003_add_resource_conditions.go — CREATE TABLE resource_conditions
-202604080004_add_resource_references.go — CREATE TABLE resource_references + indexes
+202605202128_add_resources.go              — CREATE TABLE resources, resource_labels,
+                                              resource_conditions, resource_references + indexes
+202607140001_add_condition_status_index.go — CREATE INDEX idx_resource_conditions_type_status
+                                              ON resource_conditions (type, status) WHERE status = 'False'
 ```
 
 The `clusters` and `node_pools` tables are not dropped — the database is initialized from scratch with no pre-existing tables.
@@ -1177,6 +1179,19 @@ Store `labels JSONB` and `status_conditions JSONB` on the `resources` row.
 - Con : DB cannot enforce uniqueness of condition `type` per resource — duplicates possible
 - Con : Updating a single condition requires full JSON replace at the application level
 - Con : `UpdateConditions` and `Replace` write to the same column — status aggregation and user edits can race or interfere
+
+**Alternative — Generated/stored columns computed from `status_conditions JSONB`**
+
+Keep the JSONB column — an array of condition records (`[{"type": "Reconciled", "status": "False", ...}, ...]`), matching the shape `jsonb_path_query_first` already used for the expression indexes HYPERFLEET-536 removed — but add `GENERATED ALWAYS AS (...) STORED` columns for specific condition type/subfield pairs, e.g. a `reconciled_status` column defined as `jsonb_path_query_first(status_conditions, '$[*] ? (@.type == "Reconciled")') ->> 'status'`, with a normal B-tree index on each.
+
+- Pro : A query that filters the generated column directly with a plain equality predicate (e.g. `WHERE reconciled_status = 'False'`) gets a usable B-tree index without the jsonpath/Squirrel placeholder conflict — but only for that pre-chosen column; a query still built as a dynamic jsonpath predicate against `status_conditions` (e.g. the TSL condition filter, for arbitrary condition types) hits the same conflict as before
+- Pro : Less invasive than full normalization — additive, no new table or association preloading
+- Con : Doesn't generalize — every new condition type or subfield that needs fast lookup requires its own generated column and migration, which works against a registry meant to support arbitrary condition types across N entity kinds
+- Con : Updating conditions is still a full-JSON replace from the application; none of the plain-JSONB write-complexity cons above are solved
+- Con : DB still cannot enforce uniqueness of a condition `type` inside the JSONB blob — only the pre-chosen generated columns get structure, everything else stays an unconstrained blob
+- Con : The stale-ready query needs `last_updated_time` as `TIMESTAMPTZ`. Since that cast isn't `IMMUTABLE`, a `GENERATED` column would require a custom wrapper function, an approach we previously rejected due to migration complexity and per-write overhead.
+
+**Why chosen:** Both JSONB-based alternatives only make a handful of pre-selected condition lookups fast; neither solves the general case the registry needs — arbitrary condition types, uniqueness per `(resource_id, type)`, and simple writes — without the application re-encoding and replacing the whole blob on every update. Dedicated tables solve all of that uniformly, with ordinary SQL throughout, at the cost of an `IN` query most callers already pay for via `Preload`. Type/status-filtered scans joined against `resources` (e.g. the reconciliation-pending metrics query) use an ordinary B-tree index, confirmed via `EXPLAIN ANALYZE` — see [§4.2 Indexes](#42-database-schema). The generic TSL condition filter (`status.conditions.<Type>`) is a known exception: it resolves per resource via a correlated subquery rather than a join.
 
 ---
 
