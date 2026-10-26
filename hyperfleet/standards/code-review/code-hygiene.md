@@ -1,7 +1,7 @@
 ---
 Status: Active
 Owner: HyperFleet Platform Team
-Last Updated: 2026-05-27
+Last Updated: 2026-10-23
 ---
 
 # Code Review: Code Hygiene
@@ -111,11 +111,8 @@ for _, event := range events {
 
 ```go
 // ✅ Good — structured logging with slog (per Logging Specification)
-slog.Info("publishing event",
-    "component", "sentinel",
-    "subset", "clusters",
-    "cluster_id", clusterID,
-)
+// component comes from the handler and subset from the context
+slog.InfoContext(ctx, "publishing event", "cluster_id", clusterID)
 
 // ❌ Bad — unstructured logging
 fmt.Printf("processed request in %v\n", duration)
