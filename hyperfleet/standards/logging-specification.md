@@ -479,7 +479,7 @@ func TestResourceFieldsReachTheRecord(t *testing.T) {
 
 ### Shared libraries
 
-Shared libraries (for example, the broker client) log for the calling component. Their records MUST have the caller's `component`, `version`, `hostname` and context fields:
+Shared libraries (for example, the broker client) log for the calling component. Their records MUST have the caller's `component`, `version`, `hostname` and context fields, except the lifecycle records in the exception below:
 
 - When Sentinel publishes to the broker → logs include `component=sentinel`
 - When an Adapter subscribes from the broker → logs include `component=adapter-validation`
