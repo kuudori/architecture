@@ -94,7 +94,7 @@ Include when logging errors:
 | Field | Type | Description |
 |-------|------|-------------|
 | `error` | string | Error message |
-| `stack_trace` | array | Stack trace (only for unexpected errors or debug level) |
+| `stack_trace` | array | Stack trace. Added by the `hfl.WithStackTrace` filter, for the `error` records the component selects (see [Error logging](#error-logging)) |
 | `request_context` | object | Relevant request/payload data for debugging (sensitive data MUST be masked) |
 
 > **Note:** When logging errors, include enough context to investigate incidents without needing to reproduce the issue. Always mask sensitive data per the Sensitive Data section.
@@ -597,7 +597,7 @@ To prevent truncation by log aggregators and control storage costs:
 
 Enforced via the [three-layer review model](../docs/automated-pr-review-strategy.md).
 
-- Each repository's `AGENTS.md` links this standard.
+- Each Go repository's `AGENTS.md` MUST link this standard.
 - The HyperFleet review plugins load this standard at review time.
 
 ---
