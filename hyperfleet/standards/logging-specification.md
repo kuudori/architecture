@@ -488,6 +488,7 @@ A shared library:
 
 - MUST log only through the `*slog.Logger` the caller passes in
 - MUST use the `*Context` methods with the received context
+- MAY use `context.Background()` for construction, configuration and `Close` records, when the method receives no caller context. These records still have `component`, `version` and `hostname` from the logger the caller passed in, but not the caller's context fields
 - MUST NOT call `slog.SetDefault`, build a handler, or set `component`
 
 ```go
