@@ -1,7 +1,7 @@
 ---
 Status: Active
 Owner: HyperFleet Platform Team
-Last Updated: 2026-10-23
+Last Updated: 2026-10-27
 ---
 
 # HyperFleet Logging Specification
@@ -28,9 +28,11 @@ All components MUST support configuration via **command-line flags** and **envir
 | Log Format | `--log-format` | `HYPERFLEET_LOG_FORMAT` | `json` | Output format: `text` or `json` |
 | Log Output | `--log-output` | `HYPERFLEET_LOG_OUTPUT` | `stdout` | Destination: `stdout` or `stderr` |
 
+These flag and environment variable names are the standard. A component that reads other names MUST move to these names. While it moves, it MAY also read the old names as a deprecated fallback.
+
 **Precedence** (highest to lowest): flags → environment variables → config file → defaults
 
-For production, use `LOG_FORMAT=json` for better log aggregation.
+For production, use `HYPERFLEET_LOG_FORMAT=json` for better log aggregation.
 
 ---
 
@@ -336,13 +338,15 @@ func publishedFormatted(ctx context.Context, clusterID, topic string) {
 
 #### Correlation
 
-Set `trace_id` and `span_id` on the context one time, where the span starts or arrives: in the HTTP middleware, an event handler or a polling loop. Callees do not set them again.
+Set `trace_id` and `span_id` on the context where a span starts or arrives: in the HTTP middleware, an event handler or a polling loop, and after each child span you start. Code that does not start a span does not set them. Then each record has the `span_id` of the span that is current when it is logged, as the [Correlation Fields](#correlation-fields) table defines.
 
 ```go
 import (
     "context"
+    "log/slog"
 
     hfl "github.com/openshift-hyperfleet/hyperfleet-logger"
+    "go.opentelemetry.io/otel"
     "go.opentelemetry.io/otel/trace"
 )
 
@@ -354,6 +358,15 @@ func withTrace(ctx context.Context) context.Context {
     }
     ctx = hfl.WithTraceID(ctx, sc.TraceID().String())
     return hfl.WithSpanID(ctx, sc.SpanID().String())
+}
+
+// ✅ DO: set the IDs again after you start a child span
+func fetchCluster(ctx context.Context, id string) {
+    ctx, span := otel.Tracer("sentinel").Start(ctx, "fetch cluster")
+    defer span.End()
+    ctx = withTrace(ctx)
+
+    slog.DebugContext(ctx, "fetching cluster", "cluster_id", id) // has the span_id of "fetch cluster"
 }
 ```
 
@@ -479,16 +492,18 @@ func TestResourceFieldsReachTheRecord(t *testing.T) {
 
 ### Shared libraries
 
-Shared libraries (for example, the broker client) log for the calling component. Their records MUST have the caller's `component`, `version`, `hostname` and context fields, except the lifecycle records in the exception below:
+Shared libraries (for example, the broker client) log for the calling component:
 
 - When Sentinel publishes to the broker → logs include `component=sentinel`
 - When an Adapter subscribes from the broker → logs include `component=adapter-validation`
+
+Their records MUST have the caller's `component`, `version` and `hostname`. A record that the library logs with a caller context MUST also have the caller's context fields. The exception below lists the records that have no caller context.
 
 A shared library:
 
 - MUST log only through the `*slog.Logger` the caller passes in
 - MUST use the `*Context` methods with the received context
-- MAY use `context.Background()` for construction, configuration and `Close` records, when the method receives no caller context. These records still have `component`, `version` and `hostname` from the logger the caller passed in, but not the caller's context fields
+- MAY use `context.Background()` when there is no caller context: for construction, configuration and `Close` records, and for a logger that the library gives to a dependency at construction because the dependency takes no logger or context for each call. These records still have `component`, `version` and `hostname` from the logger the caller passed in, but not the caller's context fields. For example, the broker publisher gives Watermill one logger at construction, so the Watermill records about connection setup and batching have no `trace_id` or `span_id`
 - MUST NOT call `slog.SetDefault`, build a handler, or set `component`
 
 ```go

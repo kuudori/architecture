@@ -1,7 +1,7 @@
 ---
 Status: Active
 Owner: HyperFleet Platform Team
-Last Updated: 2026-10-23
+Last Updated: 2026-10-27
 ---
 
 # Code Review: Code Hygiene
@@ -89,19 +89,19 @@ Exceptions:
 
 ```go
 // ✅ Good — error level for actual errors
-log.Error("failed to reconcile cluster", "cluster_id", id, "error", err)
+slog.ErrorContext(ctx, "failed to reconcile cluster", "cluster_id", id, "error", err)
 
 // ✅ Good — info level for operational events
-log.Info("cluster reconciliation complete", "cluster_id", id, "duration_ms", elapsed)
+slog.InfoContext(ctx, "cluster reconciliation complete", "cluster_id", id, "duration_ms", elapsed)
 
 // ❌ Bad — error level for expected condition
-log.Error("cluster not found, skipping", "cluster_id", id)
-// should be: log.Info or log.Warn (cluster not existing is expected in some flows)
+slog.ErrorContext(ctx, "cluster not found, skipping", "cluster_id", id)
+// should be: slog.InfoContext or slog.WarnContext (cluster not existing is expected in some flows)
 
 // ❌ Bad — info level in hot loop
 for _, event := range events {
-    log.Info("processing event", "id", event.ID) // floods logs under load
-    // should be: log.Debug
+    slog.InfoContext(ctx, "processing event", "id", event.ID) // floods logs under load
+    // should be: slog.DebugContext
 }
 ```
 

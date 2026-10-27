@@ -330,7 +330,7 @@ When creating a new standard:
 ### Good Example
 ```go
 // Structured logging with context
-log.Info("request processed", "duration", duration, "status", status)
+slog.InfoContext(ctx, "request processed", "duration", duration, "status", status)
 ```
 
 ### Bad Example

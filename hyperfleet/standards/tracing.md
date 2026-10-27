@@ -1,7 +1,7 @@
 ---
 Status: Active
 Owner: HyperFleet Platform Team
-Last Updated: 2026-10-23
+Last Updated: 2026-10-27
 ---
 
 # HyperFleet Tracing and Telemetry Standard
@@ -447,7 +447,7 @@ Traces MUST be correlated with logs via `trace_id` and `span_id` fields.
 
 ### Adding Trace Context to Logs
 
-Set the trace and span IDs on the context one time, where the span starts or arrives. The [`hyperfleet-logger`](https://github.com/openshift-hyperfleet/hyperfleet-logger) handler then adds `trace_id` and `span_id` to each `slog.*Context` record.
+Set the trace and span IDs on the context where a span starts or arrives, and again after you start a child span. The [`hyperfleet-logger`](https://github.com/openshift-hyperfleet/hyperfleet-logger) handler then adds `trace_id` and `span_id` to each `slog.*Context` record, so each record has the span that is current when it is logged. The [Logging Specification](./logging-specification.md#correlation) shows the child span case.
 
 ```go
 import (
